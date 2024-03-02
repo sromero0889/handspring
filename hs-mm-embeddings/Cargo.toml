@@ -3,6 +3,10 @@ name = "hs-mm-embeddings"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+hs-image-core = { path = "../hs-image-core" }
+hs-text-core = { path = "../hs-text-core" }
+hs-audio-core = { path = "../hs-audio-core" }
+
+[features]
+default = []
