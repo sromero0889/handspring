@@ -4,9 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hs-image-core = { path = "../hs-image-core" }
-hs-text-core = { path = "../hs-text-core" }
-hs-audio-core = { path = "../hs-audio-core" }
+hs-core = { path = "../hs-core" }
+#hs-image-core = { path = "../hs-image-core" }
+#hs-text-core = { path = "../hs-text-core" }
+#hs-audio-core = { path = "../hs-audio-core" }
+
+log = { workspace = true }
+rust-embed = { workspace = true }
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+serde_json = { workspace = true }
+serde = { version = "1.0.197", features = ["derive"] }
 
 [features]
-default = []
+default = ["rust-embed/debug-embed"]
+clip_vit_b_32=[]
+clip2=[]

@@ -1,0 +1,8 @@
+[package]
+name = "hs-text-core"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+hs-core = { path = "../hs-core" }

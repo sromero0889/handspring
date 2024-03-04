@@ -1,0 +1,10 @@
+{
+  "preprocessing": {
+    "image": {
+      "size": 3
+    }
+  },
+  "embeddings": {
+
+  }
+}

@@ -4,7 +4,6 @@ members = [
     "hs-core",
     "hs-image-core",
     "hs-mm-embeddings",
-    "hs-mm-embeddings-examples",
     "hs-text-core"
 ]
 
@@ -15,5 +14,23 @@ name = "handspring"
 version = "0.1.0"
 edition = "2021"
 
-#[dependencies]
+[workspace.dependencies]
+log = "0.4.20"
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.114"
+rust-embed="8.3.0"
+candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.4.0"}
+candle-nn = { git = "https://github.com/huggingface/candle.git", version = "0.4.0"}
 
+
+[dev-dependencies]
+log = { workspace = true }
+hs-mm-embeddings = { path = "hs-mm-embeddings", features = ["clip_vit_b_32"] }
+env_logger = "0.11.2"
+
+[features]
+clip_vit_b_32 = ["hs-mm-embeddings/clip_vit_b_32"]
+clip2 = ["hs-mm-embeddings/clip2"]
+
+[[example]]
+name = "clip"

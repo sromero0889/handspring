@@ -1,7 +1,0 @@
-[package]
-name = "hs-mm-embeddings-examples"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-hs-mm-embeddings = { path = "../hs-mm-embeddings" }

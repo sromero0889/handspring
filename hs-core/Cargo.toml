@@ -4,10 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-log = "0.4.20"
-env_logger = "0.11.2"
-
-serde = { version = "1.0.196", features = ["derive"] }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+candle-core = { workspace = true }
+thiserror = "1.0.57"
 anyhow = "1.0.79"
-candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.4.0"}
-candle-nn = { git = "https://github.com/huggingface/candle.git", version = "0.4.0"}
