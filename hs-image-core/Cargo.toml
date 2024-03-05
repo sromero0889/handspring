@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 image = "0.24.9"
 hs-core = { path = "../hs-core" }
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+serde = { workspace = true }
