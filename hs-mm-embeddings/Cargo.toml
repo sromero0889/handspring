@@ -16,6 +16,12 @@ candle-nn = { workspace = true }
 serde_json = { workspace = true }
 serde = { version = "1.0.197", features = ["derive"] }
 
+
+
+[build-dependencies]
+futures-io = "0.3.30"
+reqwest = { version = "0.11.24", features = ["blocking"] }
+
 [features]
 default = ["rust-embed/debug-embed"]
 clip_vit_b_32=[]
