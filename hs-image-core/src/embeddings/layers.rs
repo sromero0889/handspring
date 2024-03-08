@@ -1,8 +1,17 @@
-use candle_core::{Module, Tensor};
+use candle_core::{Device, Module, Tensor};
 use candle_nn::VarBuilder;
 use hs_core::errors::HsError;
 use hs_core::errors::HsError::InitModelError;
-use crate::embeddings::config::PatchEmbeddingLayerConfig;
+use hs_core::transformers::config::TransformerModelConfig;
+use hs_core::transformers::layers::GenEmbeddLayer;
+
+#[derive(Debug)]
+pub struct PatchEmbeddingLayerConfig {
+    pub channels: usize,
+    pub hidden_size: usize,
+    pub patch_size: usize
+}
+
 
 #[derive(Debug)]
 pub struct PatchEmbeddingLayer {
@@ -36,16 +45,72 @@ impl Module for PatchEmbeddingLayer {
             //[batch_size, hidden_size, sqrt(num_patches), sqrt(num_patches)]
             .flatten_from(2)?
             //[batch_size, hidden_size, num_patches]
-            .transpose(1,2)
+            .permute((0,2,1))
             //[batch_size, num_patches, hidden_size]
     }
 }
+
+
+pub struct VisionEmbedLayer {
+    hidden_size: usize,
+    patch_embedding_layer: PatchEmbeddingLayer,
+    position_ids: Tensor,
+    positional_embedding: Tensor,
+    class_embedding: Tensor
+}
+
+impl GenEmbeddLayer for VisionEmbedLayer {
+    fn new<C: TransformerModelConfig>(vb: VarBuilder, config: &C) -> Result<Self, HsError> where Self: Sized {
+        let config = config.get_vision()?;
+        let vb_patch_embedding_layer = vb.pp(config.patch_embedding_label);
+        let config_patch_embedding_layer = PatchEmbeddingLayerConfig {
+            channels: config.channels,
+            hidden_size: config.hidden_size,
+            patch_size: config.patch_size,
+        };
+        let patch_embedding_layer = PatchEmbeddingLayer::new(
+            vb_patch_embedding_layer,
+            &config_patch_embedding_layer
+        )?;
+
+        let position_ids = Tensor::arange(0u32, (config.num_patches + 1) as u32, &Device::Cpu).map_err(InitModelError)?.unsqueeze(0).map_err(InitModelError)?;
+        let positional_embedding = vb.get((config.num_patches + 1, config.hidden_size), config.positional_embedding_label).map_err(InitModelError)?;
+        let class_embedding = vb.get( config.hidden_size, config.class_embedding_label).map_err(InitModelError)?;
+        Ok(Self {
+            hidden_size: config.hidden_size,
+            patch_embedding_layer,
+            position_ids,
+            positional_embedding,
+            class_embedding
+        })
+    }
+
+}
+
+impl Module for VisionEmbedLayer {
+    fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        //xs [batch_size, channel, input_size, input_size]
+        let patch_embeds = xs.apply(&self.patch_embedding_layer)?;
+        //patch_embeds [batch_size, num_patches, hidden_size]
+        let class_embeds = self.class_embedding.expand((xs.dim(0)?, 1, self.hidden_size))?;
+        //class_embeds [batch_size, 1, hidden_size]
+        let embeddings = Tensor::cat(&[&class_embeds, &patch_embeds], 1)?;
+        // embeddings [batch_size, num_patches + 1, hidden_size]
+        embeddings.broadcast_add(&self.positional_embedding)
+        //embeddings [batch_size, num_patches + 1, hidden_size]
+    }
+}
+
+
+
+
 
 #[cfg(test)]
 mod tests {
     use std::any::type_name_of_val;
     use std::collections::HashMap;
     use candle_core::{Device, DType, Tensor};
+    use hs_core::transformers::config::{EmbeddsReduction, TransformerLayerConfig, VisionTransformerModelConfig};
     use super::*;
 
     #[test]
@@ -122,4 +187,47 @@ mod tests {
             _ => assert!(false)
         }
     }
+
+    #[test]
+    fn vision_embedd_layer_ok() {
+        let channels = 3;
+        let hidden_size = 768;
+        let patch_size = 32;
+        let num_patches = 49;
+        let mut ts: HashMap<String, Tensor> = HashMap::new();
+        ts.insert(String::from("conv.weight"), Tensor::ones((hidden_size, channels, patch_size, patch_size), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("positional_embedding"), Tensor::ones((num_patches + 1, hidden_size), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("class_embedding"), Tensor::ones((hidden_size), DType::F32, &Device::Cpu).unwrap());
+        let vb = VarBuilder::from_tensors(ts, DType::F32, &Device::Cpu);
+
+        let config = VisionTransformerModelConfig {
+            input_size: 225,
+            channels: 3,
+            patch_size,
+            hidden_size,
+            num_patches,
+            embeddings_size: 512,
+            patch_embedding_label: "conv",
+            positional_embedding_label: "positional_embedding",
+            class_embedding_label: "class_embedding",
+            projection_label: "proj",
+            permutation: Some(Vec::from(&[1, 0 ,2])),
+            num_layers: 1,
+            layers_label: "transformer.resblocks",
+            reduction: Some(EmbeddsReduction::Zero),
+            transformer_layer: TransformerLayerConfig {},
+        };
+
+        let vision_embedd_layer = VisionEmbedLayer::new(vb, &config).unwrap();
+
+
+        let batch_size = 1;
+        let img_size = 224;
+        let input: Tensor = Tensor::ones((batch_size, channels, img_size, img_size), DType::F32, &Device::Cpu).unwrap();
+
+        let output: Tensor = vision_embedd_layer.forward(&input).unwrap();
+
+        assert_eq!(output.dims(), &[batch_size, num_patches + 1, hidden_size]);
+    }
+
 }
