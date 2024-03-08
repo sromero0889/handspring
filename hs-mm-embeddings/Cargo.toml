@@ -5,9 +5,9 @@ edition = "2021"
 
 [dependencies]
 hs-core = { path = "../hs-core" }
-#hs-image-core = { path = "../hs-image-core" }
-#hs-text-core = { path = "../hs-text-core" }
-#hs-audio-core = { path = "../hs-audio-core" }
+hs-image-core = { path = "../hs-image-core" }
+hs-text-core = { path = "../hs-text-core" }
+hs-audio-core = { path = "../hs-audio-core" }
 
 log = { workspace = true }
 rust-embed = { workspace = true }

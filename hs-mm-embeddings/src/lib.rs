@@ -5,3 +5,6 @@
 #[cfg(feature = "clip_vit_b_32")]
 pub mod clip_vit_b_32;
 
+
+pub mod config;
+
