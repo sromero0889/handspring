@@ -30,6 +30,7 @@ todo!
 - Examples in Rust
 - Examples integration with other languages
 - Example [Weaviate custom module](https://weaviate.io/developers/weaviate/modules/other-modules/custom-modules)
+- Expand models catalog
 
 ### Integrations with other programming languages
 todo!
