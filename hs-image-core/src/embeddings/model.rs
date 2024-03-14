@@ -1,5 +1,5 @@
-use candle_nn::Linear;
-use hs_core::transformers::layers::{TransformerModelGen, TransformerResBlock};
+use hs_core::transformers::layers::TransformerResBlock;
+use hs_core::transformers::model::TransformerModelGen;
 use crate::embeddings::layers::VisionEmbedLayer;
 
 pub type VisionTransformer = TransformerModelGen<VisionEmbedLayer, TransformerResBlock>;
@@ -9,8 +9,9 @@ pub type VisionTransformer = TransformerModelGen<VisionEmbedLayer, TransformerRe
 mod tests {
     use std::collections::HashMap;
     use candle_core::{Device, DType, Tensor};
-    use candle_nn::VarBuilder;
-    use hs_core::transformers::config::{EmbeddsReduction, TransformerLayerConfig, VisionTransformerModelConfig};
+    use candle_nn::{VarBuilder};
+    use hs_core::transformers::config::{EmbeddsReduction, MlpLayerConfig, MsaLayerConfig, TransformerLayerConfig, VisionTransformerModelConfig};
+    use hs_core::transformers::config::Activation::QuickGelu;
 
     use super::*;
 
@@ -43,7 +44,36 @@ mod tests {
             num_layers: 1,
             layers_label: "transformer.resblocks",
             reduction: Some(EmbeddsReduction::Zero),
-            transformer_layer: TransformerLayerConfig {},
+            transformer_layer: TransformerLayerConfig {
+                hidden_size,
+                ln_1_label: "",
+                ln_2_label: "",
+                msa_label: "",
+                mlp_label: "",
+                mlp_layer: MlpLayerConfig {
+                    hidden_size,
+                    interm_size: 0,
+                    activation: Some(QuickGelu),
+                    c_fc_label: "",
+                    c_proj_label: "",
+                },
+                msa_layer: MsaLayerConfig {
+                    embed_dim: 0,
+                    head_dim: 0,
+                    num_patches,
+                    num_heads: 0,
+                    interm_size: 0,
+                    in_proj_label: None,
+                    in_proj_w_label: None,
+                    in_proj_b_label: None,
+                    q_label: None,
+                    k_label: None,
+                    v_label: None,
+                    out_proj_label: "",
+                },
+            },
+            ln_pre_config: Some(("ln_pre", hidden_size, hidden_size)),
+            ln_post_config: Some(("ln_post", hidden_size, hidden_size)),
         };
 
         let vision_transformer = VisionTransformer::new(vb, &config).unwrap();
