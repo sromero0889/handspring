@@ -141,19 +141,6 @@ impl MsaLayer {
 
             (Some(in_proj), None)
 
-        } else if let (Some(in_proj_w_label) , Some (in_proj_b_label)) = (config.in_proj_w_label, config.in_proj_b_label) {
-            // todo, this path will be removed when corrected labels in safetensors file
-            let init_ws = candle_nn::init::DEFAULT_KAIMING_NORMAL;
-            let ws = vb.get_with_hints((config.interm_size, config.embed_dim), in_proj_w_label, init_ws).map_err(InitModelError)?;
-            let bound = 1. / (config.embed_dim as f64).sqrt();
-            let init_bs = candle_nn::Init::Uniform {
-                lo: -bound,
-                up: bound,
-            };
-            let bs = vb.get_with_hints(config.interm_size, in_proj_b_label, init_bs).map_err(InitModelError)?;
-            let in_proj = Linear::new(ws, Some(bs));
-            (Some(in_proj), None)
-
         } else if let (Some(q_label) , Some (k_label), Some(v_label)) = (config.q_label, config.k_label, config.v_label) {
             let embed_dim = config.embed_dim / 3;
             let interm_size = config.interm_size / 3; // Todo check
@@ -318,17 +305,15 @@ mod tests {
             num_patches: 50,
             num_heads: 12,
             interm_size: 2304,
-            in_proj_label: None,
-            in_proj_w_label: Some("in_proj_weight"),
-            in_proj_b_label: Some("in_proj_bias"),
+            in_proj_label: Some("in_proj"),
             q_label: None,
             k_label: None,
             v_label: None,
             out_proj_label: "out_proj",
         };
         let mut ts: HashMap<String, Tensor> = HashMap::new();
-        ts.insert(String::from("in_proj_weight"), Tensor::ones((2304, 768), DType::F32, &Device::Cpu).unwrap());
-        ts.insert(String::from("in_proj_bias"), Tensor::ones(2304, DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("in_proj.weight"), Tensor::ones((2304, 768), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("in_proj.bias"), Tensor::ones(2304, DType::F32, &Device::Cpu).unwrap());
         ts.insert(String::from("out_proj.weight"), Tensor::ones((768, 768), DType::F32, &Device::Cpu).unwrap());
         ts.insert(String::from("out_proj.bias"), Tensor::ones(768, DType::F32, &Device::Cpu).unwrap());
 

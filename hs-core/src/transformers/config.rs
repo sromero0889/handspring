@@ -19,8 +19,6 @@ pub struct MsaLayerConfig {
     pub num_heads: usize,
     pub interm_size: usize,
     pub in_proj_label: Option<&'static str>,
-    pub in_proj_w_label: Option<&'static str>,
-    pub in_proj_b_label: Option<&'static str>,
     pub q_label: Option<&'static str>,
     pub k_label: Option<&'static str>,
     pub v_label: Option<&'static str>,

@@ -235,8 +235,6 @@ mod tests {
                     num_heads: 0,
                     interm_size: 0,
                     in_proj_label: None,
-                    in_proj_w_label: None,
-                    in_proj_b_label: None,
                     q_label: None,
                     k_label: None,
                     v_label: None,
