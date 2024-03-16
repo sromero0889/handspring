@@ -63,7 +63,7 @@ impl Module for MlpLayer {
 pub struct MsaLayer {
     head_dim: usize,
     embedd_dim: usize,
-    num_patches: usize,
+    // num_patches: usize,
     num_heads: usize,
     in_proj: Option<Linear>,
     q_k_v_proj: Option<(Linear, Linear, Linear)>,
@@ -179,7 +179,7 @@ impl MsaLayer {
                 // Todo
                 head_dim: config.head_dim,
                 embedd_dim: config.embed_dim,
-                num_patches: config.num_patches,
+                // num_patches: config.num_patches,
                 num_heads: config.num_heads,
                 in_proj,
                 q_k_v_proj,
@@ -327,7 +327,58 @@ mod tests {
 
     #[test]
     fn transformer_res_block_ok(){
-        // TransformerResBlock
-        todo!()
+        let config = TransformerLayerConfig {
+            hidden_size: 768,
+            ln_1_label: "ln_1",
+            ln_2_label: "ln_2",
+            msa_label: "attn",
+            mlp_label: "mlp",
+            mlp_layer: MlpLayerConfig {
+                hidden_size: 768,
+                interm_size: 3072,
+                activation: Some(QuickGelu),
+                c_fc_label: "c_fc",
+                c_proj_label: "c_proj",
+            },
+            msa_layer: MsaLayerConfig {
+                embed_dim: 768,
+                head_dim: 64,
+                num_patches: 50,
+                num_heads: 12,
+                interm_size: 2304,
+                in_proj_label: Some("in_proj"),
+                q_label: None,
+                k_label: None,
+                v_label: None,
+                out_proj_label: "out_proj",
+            },
+        };
+
+        let mut ts: HashMap<String, Tensor> = HashMap::new();
+
+        ts.insert(String::from("ln_1.weight"), Tensor::ones(768, DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("ln_1.bias"), Tensor::ones(768, DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("ln_2.weight"), Tensor::ones( 768, DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("ln_2.bias"), Tensor::ones(768, DType::F32, &Device::Cpu).unwrap());
+
+        ts.insert(String::from("mlp.c_fc.weight"), Tensor::ones((3072, 768), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("mlp.c_fc.bias"), Tensor::ones(3072, DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("mlp.c_proj.weight"), Tensor::ones((768, 3072), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("mlp.c_proj.bias"), Tensor::ones(768, DType::F32, &Device::Cpu).unwrap());
+
+        ts.insert(String::from("attn.in_proj.weight"), Tensor::ones((2304, 768), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("attn.in_proj.bias"), Tensor::ones(2304, DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("attn.out_proj.weight"), Tensor::ones((768, 768), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("attn.out_proj.bias"), Tensor::ones(768, DType::F32, &Device::Cpu).unwrap());
+
+        let vb = VarBuilder::from_tensors(ts, DType::F32, &Device::Cpu);
+
+        let resblock = TransformerResBlock::new(vb, &config).unwrap();
+        let input = Tensor::ones((50,2,768), DType::F32, &Device::Cpu).unwrap();
+        let res = input.apply(&resblock).unwrap();
+        assert_eq!(res.dims3().unwrap(), (50,2,768));
+
     }
+
+
 }
