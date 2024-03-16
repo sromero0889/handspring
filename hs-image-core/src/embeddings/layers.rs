@@ -1,4 +1,4 @@
-use candle_core::{Device, Module, Tensor};
+use candle_core::{Module, Tensor};
 use candle_nn::VarBuilder;
 use hs_core::errors::HsError;
 use hs_core::errors::HsError::InitModelError;
@@ -54,7 +54,7 @@ impl Module for PatchEmbeddingLayer {
 pub struct VisionEmbedLayer {
     hidden_size: usize,
     patch_embedding_layer: PatchEmbeddingLayer,
-    position_ids: Tensor,
+    // position_ids: Tensor,
     positional_embedding: Tensor,
     class_embedding: Tensor
 }
@@ -62,7 +62,7 @@ pub struct VisionEmbedLayer {
 impl GenEmbeddLayer for VisionEmbedLayer {
     fn new<C: TransformerModelConfig>(vb: VarBuilder, config: &C) -> Result<Self, HsError> where Self: Sized {
         let config = config.get_vision()?;
-        let vb_patch_embedding_layer = vb.pp(config.patch_embedding_label);
+        let vb_patch_embedding_layer = vb.pp(config.patch_embedding_label.as_str());
         let config_patch_embedding_layer = PatchEmbeddingLayerConfig {
             channels: config.channels,
             hidden_size: config.hidden_size,
@@ -73,13 +73,13 @@ impl GenEmbeddLayer for VisionEmbedLayer {
             &config_patch_embedding_layer
         )?;
 
-        let position_ids = Tensor::arange(0u32, (config.num_patches + 1) as u32, &Device::Cpu).map_err(InitModelError)?.unsqueeze(0).map_err(InitModelError)?;
-        let positional_embedding = vb.get((config.num_patches + 1, config.hidden_size), config.positional_embedding_label).map_err(InitModelError)?;
-        let class_embedding = vb.get( config.hidden_size, config.class_embedding_label).map_err(InitModelError)?;
+        // let position_ids = Tensor::arange(0u32, (config.num_patches + 1) as u32, &Device::Cpu).map_err(InitModelError)?.unsqueeze(0).map_err(InitModelError)?;
+        let positional_embedding = vb.get((config.num_patches + 1, config.hidden_size), config.positional_embedding_label.as_str()).map_err(InitModelError)?;
+        let class_embedding = vb.get( config.hidden_size, config.class_embedding_label.as_str()).map_err(InitModelError)?;
         Ok(Self {
             hidden_size: config.hidden_size,
             patch_embedding_layer,
-            position_ids,
+            // position_ids,
             positional_embedding,
             class_embedding
         })
@@ -197,7 +197,7 @@ mod tests {
         let mut ts: HashMap<String, Tensor> = HashMap::new();
         ts.insert(String::from("conv.weight"), Tensor::ones((hidden_size, channels, patch_size, patch_size), DType::F32, &Device::Cpu).unwrap());
         ts.insert(String::from("positional_embedding"), Tensor::ones((num_patches + 1, hidden_size), DType::F32, &Device::Cpu).unwrap());
-        ts.insert(String::from("class_embedding"), Tensor::ones((hidden_size), DType::F32, &Device::Cpu).unwrap());
+        ts.insert(String::from("class_embedding"), Tensor::ones(hidden_size, DType::F32, &Device::Cpu).unwrap());
         let vb = VarBuilder::from_tensors(ts, DType::F32, &Device::Cpu);
 
         let config = VisionTransformerModelConfig {
@@ -207,26 +207,26 @@ mod tests {
             hidden_size,
             num_patches,
             embeddings_size: 512,
-            patch_embedding_label: "conv",
-            positional_embedding_label: "positional_embedding",
-            class_embedding_label: "class_embedding",
-            projection_label: "proj",
+            patch_embedding_label: String::from("conv"),
+            positional_embedding_label: String::from("positional_embedding"),
+            class_embedding_label: String::from("class_embedding"),
+            projection_label: String::from("proj"),
             permutation: Some(Vec::from(&[1, 0 ,2])),
             num_layers: 1,
-            layers_label: "transformer.resblocks",
+            layers_label: String::from("transformer.resblocks"),
             reduction: Some(EmbeddsReduction::Zero),
             transformer_layer: TransformerLayerConfig {
                 hidden_size,
-                ln_1_label: "",
-                ln_2_label: "",
-                msa_label: "",
-                mlp_label: "",
+                ln_1_label: String::from("ln_1"),
+                ln_2_label: String::from("ln_2"),
+                msa_label: String::from("attn"),
+                mlp_label: String::from("mlp"),
                 mlp_layer: MlpLayerConfig {
                     hidden_size,
                     interm_size: 0,
                     activation: None,
-                    c_fc_label: "",
-                    c_proj_label: "",
+                    c_fc_label: String::from(""),
+                    c_proj_label: String::from(""),
                 },
                 msa_layer: MsaLayerConfig {
                     embed_dim: 0,
@@ -238,11 +238,11 @@ mod tests {
                     q_label: None,
                     k_label: None,
                     v_label: None,
-                    out_proj_label: "",
+                    out_proj_label: String::from(""),
                 },
             },
-            ln_pre_config: Some(("ln_pre", hidden_size, hidden_size)),
-            ln_post_config: Some(("ln_post", hidden_size, hidden_size)),
+            ln_pre_config: Some((String::from("ln_pre"), hidden_size, hidden_size)),
+            ln_post_config: Some((String::from("ln_post"), hidden_size, hidden_size)),
         };
 
         let vision_embedd_layer = VisionEmbedLayer::new(vb, &config).unwrap();

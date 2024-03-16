@@ -24,5 +24,5 @@ reqwest = { version = "0.11.24", features = ["blocking"] }
 
 [features]
 default = ["rust-embed/debug-embed"]
-clip_vit_b_32=[]
-clip2=[]
+#clip_vit_b_32=[]
+clip_vit_b_32_image = []

@@ -7,8 +7,8 @@ pub struct MlpLayerConfig {
     pub hidden_size: usize,
     pub interm_size: usize,
     pub activation: Option<Activation>,
-    pub c_fc_label: &'static str,
-    pub c_proj_label: &'static str
+    pub c_fc_label: String,
+    pub c_proj_label: String
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -18,11 +18,11 @@ pub struct MsaLayerConfig {
     pub num_patches: usize,
     pub num_heads: usize,
     pub interm_size: usize,
-    pub in_proj_label: Option<&'static str>,
-    pub q_label: Option<&'static str>,
-    pub k_label: Option<&'static str>,
-    pub v_label: Option<&'static str>,
-    pub out_proj_label: &'static str
+    pub in_proj_label: Option<String>,
+    pub q_label: Option<String>,
+    pub k_label: Option<String>,
+    pub v_label: Option<String>,
+    pub out_proj_label: String
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -45,23 +45,23 @@ pub trait TransformerModelConfig {
     fn get_audio(&self) -> Result<&AudioTransformerModelConfig, HsError>;
     fn get_hidden_size(&self) -> usize;
     fn get_embeddings_size(&self) -> usize;
-    fn get_projection_label(&self) -> &'static str;
+    fn get_projection_label(&self) -> &str;
     fn get_permutation(&self) -> Option<Vec<usize>>;
     fn get_reduction(&self) -> Option<EmbeddsReduction>;
     fn get_num_layers(&self) -> usize;
-    fn get_layers_label(&self) -> &'static str;
+    fn get_layers_label(&self) -> &str;
     fn get_transformer_layer_config(&self) -> &TransformerLayerConfig;
-    fn get_ln_pre_config(&self) -> Option<(&'static str, usize, usize)>;
-    fn get_ln_post_config(&self) -> Option<(&'static str, usize, usize)>;
+    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)>;
+    fn get_ln_post_config(&self) -> Option<(String, usize, usize)>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransformerLayerConfig {
     pub hidden_size: usize,
-    pub ln_1_label: &'static str,
-    pub ln_2_label: &'static str,
-    pub msa_label: &'static str,
-    pub mlp_label: &'static str,
+    pub ln_1_label: String,
+    pub ln_2_label: String,
+    pub msa_label: String,
+    pub mlp_label: String,
     pub mlp_layer: MlpLayerConfig,
     pub msa_layer: MsaLayerConfig,
 }
@@ -75,16 +75,16 @@ pub struct VisionTransformerModelConfig {
     pub num_patches: usize,
     pub embeddings_size: usize,
     pub num_layers: usize,
-    pub layers_label: &'static str,
-    pub patch_embedding_label: &'static str,
-    pub positional_embedding_label: &'static str,
-    pub class_embedding_label: &'static str,
-    pub projection_label: &'static str,
+    pub layers_label: String,
+    pub patch_embedding_label: String,
+    pub positional_embedding_label: String,
+    pub class_embedding_label: String,
+    pub projection_label: String,
     pub permutation: Option<Vec<usize>>,
     pub reduction: Option<EmbeddsReduction>,
     pub transformer_layer: TransformerLayerConfig,
-    pub ln_pre_config: Option<(&'static str, usize, usize)>,
-    pub ln_post_config: Option<(&'static str, usize, usize)>
+    pub ln_pre_config: Option<(String, usize, usize)>,
+    pub ln_post_config: Option<(String, usize, usize)>
 }
 
 impl TransformerModelConfig for VisionTransformerModelConfig {
@@ -108,8 +108,8 @@ impl TransformerModelConfig for VisionTransformerModelConfig {
         self.embeddings_size
     }
 
-    fn get_projection_label(&self) -> &'static str {
-        self.projection_label
+    fn get_projection_label(&self) -> &str {
+        self.projection_label.as_str()
     }
 
     fn get_permutation(&self) -> Option<Vec<usize>> {
@@ -124,20 +124,20 @@ impl TransformerModelConfig for VisionTransformerModelConfig {
         self.num_layers
     }
 
-    fn get_layers_label(&self) -> &'static str {
-        self.layers_label
+    fn get_layers_label(&self) -> &str {
+        self.layers_label.as_str()
     }
 
     fn get_transformer_layer_config(&self) -> &TransformerLayerConfig {
         &self.transformer_layer
     }
 
-    fn get_ln_pre_config(&self) -> Option<(&'static str, usize, usize)> {
-        self.ln_pre_config
+    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)> {
+        self.ln_pre_config.clone()
     }
 
-    fn get_ln_post_config(&self) -> Option<(&'static str, usize, usize)> {
-        self.ln_post_config
+    fn get_ln_post_config(&self) -> Option<(String, usize, usize)> {
+        self.ln_post_config.clone()
     }
 }
 
@@ -148,12 +148,12 @@ pub struct TextTransformerModelConfig {
     pub hidden_size: usize,
     pub embeddings_size: usize,
     pub num_layers: usize,
-    pub layers_label: &'static str,
-    pub projection_label: &'static str,
+    pub layers_label: String,
+    pub projection_label: String,
     pub permutation: Option<Vec<usize>>,
     pub transformer_layer: TransformerLayerConfig,
-    pub ln_pre_config: Option<(&'static str, usize, usize)>,
-    pub ln_post_config: Option<(&'static str, usize, usize)>
+    pub ln_pre_config: Option<(String, usize, usize)>,
+    pub ln_post_config: Option<(String, usize, usize)>
 }
 
 impl TransformerModelConfig for TextTransformerModelConfig {
@@ -177,8 +177,8 @@ impl TransformerModelConfig for TextTransformerModelConfig {
         self.embeddings_size
     }
 
-    fn get_projection_label(&self) -> &'static str {
-        self.projection_label
+    fn get_projection_label(&self) -> &str {
+        self.projection_label.as_str()
     }
 
     fn get_permutation(&self) -> Option<Vec<usize>> {
@@ -193,20 +193,20 @@ impl TransformerModelConfig for TextTransformerModelConfig {
         self.num_layers
     }
 
-    fn get_layers_label(&self) -> &'static str {
-        self.layers_label
+    fn get_layers_label(&self) -> &str {
+        self.layers_label.as_str()
     }
 
     fn get_transformer_layer_config(&self) -> &TransformerLayerConfig {
         &self.transformer_layer
     }
 
-    fn get_ln_pre_config(&self) -> Option<(&'static str, usize, usize)> {
-        self.ln_pre_config
+    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)> {
+        self.ln_pre_config.clone()
     }
 
-    fn get_ln_post_config(&self) -> Option<(&'static str, usize, usize)> {
-        self.ln_post_config
+    fn get_ln_post_config(&self) -> Option<(String, usize, usize)> {
+        self.ln_post_config.clone()
     }
 }
 
@@ -237,7 +237,7 @@ impl TransformerModelConfig for AudioTransformerModelConfig {
         unimplemented!()
     }
 
-    fn get_projection_label(&self) -> &'static str {
+    fn get_projection_label(&self) -> &str {
         unimplemented!()
     }
 
@@ -253,7 +253,7 @@ impl TransformerModelConfig for AudioTransformerModelConfig {
         unimplemented!()
     }
 
-    fn get_layers_label(&self) -> &'static str {
+    fn get_layers_label(&self) -> &str {
         unimplemented!()
     }
 
@@ -261,11 +261,11 @@ impl TransformerModelConfig for AudioTransformerModelConfig {
         unimplemented!()
     }
 
-    fn get_ln_pre_config(&self) -> Option<(&'static str, usize, usize)> {
+    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)> {
         unimplemented!()
     }
 
-    fn get_ln_post_config(&self) -> Option<(&'static str, usize, usize)> {
+    fn get_ln_post_config(&self) -> Option<(String, usize, usize)> {
         unimplemented!()
     }
 }
@@ -273,7 +273,15 @@ impl TransformerModelConfig for AudioTransformerModelConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MultimodalConfig<I,T,A> {
-    image: Option<I>,
-    text: Option<T>,
-    audio: Option<A>,
+    pub image: Option<I>,
+    pub text: Option<T>,
+    pub audio: Option<A>,
+}
+
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EmbeddingsMultimodalConfig<I: TransformerModelConfig,T: TransformerModelConfig,A:TransformerModelConfig> {
+    pub image: Option<I>,
+    pub text: Option<T>,
+    pub audio: Option<A>,
 }

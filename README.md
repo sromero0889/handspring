@@ -5,19 +5,30 @@ Open Source Multimodal Embeddings in Rust
 
 
 ### Goals
-- Access to state-of-the-art models
+- Access to state-of-the-art multimodal embedding models
+- Only inference
 - High performance on CPU
 - Cheap & easy to scale
 - Flexible integration
 
-### Models
+### Features
 
-| Status      | Model                | Feature       | Embeddings  |
-|-------------|----------------------|---------------|-------------|
-| Development | OpenAI/Clip-ViT-B-32 | clip_vit_b_32 | Image, Text |
-|             |                      |               |             |
-|             |                      |               |             |
+| Status      | Model                | Feature             | Embeddings  |
+|-------------|----------------------|---------------------|-------------|
+| Development | OpenAI/Clip-ViT-B-32 | clip_vit_b_32_image | Image       |
+| Next        | OpenAI/Clip-ViT-B-32 | clip_vit_b_32_text  | Text        |
+| -           | OpenAI/Clip-ViT-B-32 | clip_vit_b_32       | Image, Text |
+| -           | ImageBind            |                     |             |
+|             |                      |                     |             |
 
+
+### Strategies
+- Embed models config & safetensors files:
+  - No need to handle extra files
+- Reduce component size
+  - Each feature will only be responsible for generating embeddings for 1 modality for 1 model
+  - Extra feature for the full model (low priority)
+  - Split safetensors files into modalities (todo! improve code to automate this)
 
 
 ### Docs & Examples

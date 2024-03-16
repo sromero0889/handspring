@@ -7,4 +7,6 @@ pub mod clip_vit_b_32;
 
 
 pub mod config;
+#[cfg(feature = "clip_vit_b_32_image")]
+pub mod clip_vit_b_32_image;
 

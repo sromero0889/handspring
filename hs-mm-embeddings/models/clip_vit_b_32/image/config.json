@@ -1,0 +1,49 @@
+{
+  "preprocessing": {
+    "image": {
+      "size": 3
+    }
+  },
+  "embeddings": {
+    "image": {
+      "input_size" : 224,
+      "channels" : 3,
+      "patch_size" : 32,
+      "hidden_size" : 768,
+      "num_patches" : 49,
+      "embeddings_size" : 512,
+      "num_layers" : 12,
+      "layers_label" : "transformer.resblocks",
+      "patch_embedding_label" : "conv1",
+      "positional_embedding_label" : "positional_embedding",
+      "class_embedding_label" : "class_embedding",
+      "projection_label" : "proj",
+      "permutation" : [1,0,2],
+      "reduction" : "Zero",
+      "transformer_layer" : {
+        "hidden_size": 768,
+        "ln_1_label": "ln_1",
+        "ln_2_label": "ln_2",
+        "msa_label": "attn",
+        "mlp_label": "mlp",
+        "mlp_layer": {
+          "hidden_size": 768,
+          "interm_size": 3072,
+          "activation": "QuickGelu",
+          "c_fc_label": "c_fc",
+          "c_proj_label": "c_proj"
+        },
+        "msa_layer": {
+          "embed_dim": 768,
+          "head_dim": 64,
+          "num_patches": 49,
+          "num_heads": 12,
+          "interm_size": 2304,
+          "in_proj_label": "in_proj",
+          "out_proj_label": "out_proj"
+        }
+      }
+    }
+
+  }
+}

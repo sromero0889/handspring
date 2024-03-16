@@ -1,6 +1,6 @@
 use candle_core::{Device, DType};
 use candle_nn::VarBuilder;
-use log::error;
+use log::{debug, error};
 use rust_embed::RustEmbed;
 use hs_core::errors::HsError;
 use hs_core::errors::HsError::{JsonMapError, InitModelError, ModelAssetsNotFound, SafetensorsMapError, Other};
@@ -8,14 +8,36 @@ use hs_image_core::embeddings::model::VisionTransformer;
 use crate::config::ModelDescriptor;
 
 
-pub fn build_model() ->  Result<(), HsError> {
-    let (_model, _config) = load_model_data()?;
-    todo!()
+/// Returns a model that generates embeddings from images
+///
+/// # Examples
+///
+/// ```
+/// use candle_core::{Device, DType, Module};
+/// use hs_mm_embeddings::clip_vit_b_32_image;
+///
+/// // Load & preprocess your images instead
+/// let batch_size = 1;
+/// let channels = 3;
+/// let img_size = 224;
+/// let input_img_batch = candle_core::Tensor::ones((batch_size, channels, img_size, img_size), DType::F32, &Device::Cpu)?;
+///
+/// let image_model = clip_vit_b_32_image::model::build_model()?;
+/// let output_batch = image_model.forward(&input_img_batch)?;
+/// ```
+///
+pub fn build_model() ->  Result<VisionTransformer, HsError> {
+    let (model, config) = load_model_data()?;
+    debug!("{:?}",config);
+    match &config.embeddings.image {
+        Some(config) => VisionTransformer::new(model.pp("visual"), config),
+        _ => Err(Other("Image model config not found or incorrect"))
+    }
 }
 
 
 #[derive(RustEmbed)]
-#[folder = "models/clip_vit_b_32/full/"]
+#[folder = "models/clip_vit_b_32/image/"]
 struct ModelAssets;
 
 // Loads Safetensors & Config Files
@@ -33,7 +55,7 @@ fn load_model_data<'a>() ->  Result<(VarBuilder<'a>, ModelDescriptor), HsError> 
             Ok((model, config))
         }
         _ => {
-            let error = ModelAssetsNotFound("clip_v it_b_32");
+            let error = ModelAssetsNotFound("clip_vit_b_32/image");
             error!("{}", error);
             Err(error)
         }

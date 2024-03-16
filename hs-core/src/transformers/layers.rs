@@ -32,8 +32,8 @@ pub struct MlpLayer {
 
 impl MlpLayer {
     fn new(vb: VarBuilder, config: &MlpLayerConfig) -> Result<Self, HsError> {
-        let c_fc = linear(config.hidden_size, config.interm_size, vb.pp(config.c_fc_label)).map_err(InitModelError)?;
-        let c_proj = linear(config.interm_size, config.hidden_size, vb.pp(config.c_proj_label)).map_err(InitModelError)?;
+        let c_fc = linear(config.hidden_size, config.interm_size, vb.pp(config.c_fc_label.as_str())).map_err(InitModelError)?;
+        let c_proj = linear(config.interm_size, config.hidden_size, vb.pp(config.c_proj_label.as_str())).map_err(InitModelError)?;
         let activation = {
             if let Some(activation) = &config.activation {
                 match activation {
@@ -132,7 +132,7 @@ impl MsaLayer {
     }
     fn new(vb: VarBuilder, config: &MsaLayerConfig) -> Result<Self, HsError> {
 
-        let (in_proj, q_k_v_proj) = if let Some(in_proj_key) = config.in_proj_label {
+        let (in_proj, q_k_v_proj) = if let Some(in_proj_key) = &config.in_proj_label {
             let in_proj = linear(
                 config.embed_dim,
                 config.interm_size,
@@ -141,7 +141,7 @@ impl MsaLayer {
 
             (Some(in_proj), None)
 
-        } else if let (Some(q_label) , Some (k_label), Some(v_label)) = (config.q_label, config.k_label, config.v_label) {
+        } else if let (Some(q_label) , Some (k_label), Some(v_label)) = (&config.q_label, &config.k_label, &config.v_label) {
             let embed_dim = config.embed_dim / 3;
             let interm_size = config.interm_size / 3; // Todo check
             (None, Some((
@@ -169,7 +169,7 @@ impl MsaLayer {
         let out_proj= linear(
             config.embed_dim,
             config.embed_dim,
-            vb.pp(config.out_proj_label)
+            vb.pp(config.out_proj_label.as_str())
         ).map_err(InitModelError)?;
 
         if in_proj.is_none() && q_k_v_proj.is_none() {
@@ -227,16 +227,16 @@ impl TransformerEncoderLayer for TransformerResBlock {
         let ln_1 = layer_norm(
             config.hidden_size,
             LayerNormConfig::default(),
-            vb.pp(config.ln_1_label)
+            vb.pp(config.ln_1_label.as_str())
         ).map_err(InitModelError)?;
         let ln_2 = layer_norm(
             config.hidden_size,
             LayerNormConfig::default(),
-            vb.pp(config.ln_2_label)
+            vb.pp(config.ln_2_label.as_str())
         ).map_err(InitModelError)?;
 
-        let mlp_layer = MlpLayer::new(vb.pp(config.mlp_label), &config.mlp_layer)?;
-        let msa_layer = MsaLayer::new(vb.pp(config.msa_label), &config.msa_layer)?;
+        let mlp_layer = MlpLayer::new(vb.pp(config.mlp_label.as_str()), &config.mlp_layer)?;
+        let msa_layer = MsaLayer::new(vb.pp(config.msa_label.as_str()), &config.msa_layer)?;
 
         Ok(Self {
             ln_1,
@@ -279,8 +279,8 @@ mod tests {
             hidden_size: 768,
             interm_size: 3072,
             activation: Some(QuickGelu),
-            c_fc_label: "c_fc",
-            c_proj_label: "c_proj",
+            c_fc_label: String::from("c_fc"),
+            c_proj_label: String::from("c_proj"),
         };
         let mut ts: HashMap<String, Tensor> = HashMap::new();
         ts.insert(String::from("c_fc.weight"), Tensor::ones((3072, 768), DType::F32, &Device::Cpu).unwrap());
@@ -305,11 +305,11 @@ mod tests {
             num_patches: 50,
             num_heads: 12,
             interm_size: 2304,
-            in_proj_label: Some("in_proj"),
+            in_proj_label: Some(String::from("in_proj")),
             q_label: None,
             k_label: None,
             v_label: None,
-            out_proj_label: "out_proj",
+            out_proj_label: String::from("out_proj"),
         };
         let mut ts: HashMap<String, Tensor> = HashMap::new();
         ts.insert(String::from("in_proj.weight"), Tensor::ones((2304, 768), DType::F32, &Device::Cpu).unwrap());
@@ -329,28 +329,28 @@ mod tests {
     fn transformer_res_block_ok(){
         let config = TransformerLayerConfig {
             hidden_size: 768,
-            ln_1_label: "ln_1",
-            ln_2_label: "ln_2",
-            msa_label: "attn",
-            mlp_label: "mlp",
+            ln_1_label: String::from("ln_1"),
+            ln_2_label: String::from("ln_2"),
+            msa_label: String::from("attn"),
+            mlp_label: String::from("mlp"),
             mlp_layer: MlpLayerConfig {
                 hidden_size: 768,
                 interm_size: 3072,
                 activation: Some(QuickGelu),
-                c_fc_label: "c_fc",
-                c_proj_label: "c_proj",
+                c_fc_label: String::from("c_fc"),
+                c_proj_label: String::from("c_proj"),
             },
             msa_layer: MsaLayerConfig {
                 embed_dim: 768,
                 head_dim: 64,
-                num_patches: 50,
+                num_patches: 49,
                 num_heads: 12,
                 interm_size: 2304,
-                in_proj_label: Some("in_proj"),
+                in_proj_label: Some(String::from("in_proj")),
                 q_label: None,
                 k_label: None,
                 v_label: None,
-                out_proj_label: "out_proj",
+                out_proj_label: String::from("out_proj"),
             },
         };
 
