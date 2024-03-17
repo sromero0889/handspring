@@ -10,7 +10,7 @@ mod tests {
     use std::collections::HashMap;
     use candle_core::{Device, DType, Module, Tensor};
     use candle_nn::{VarBuilder};
-    use hs_core::transformers::config::{EmbeddsReduction, MlpLayerConfig, MsaLayerConfig, TransformerLayerConfig, VisionTransformerModelConfig};
+    use hs_core::transformers::config::{EmbeddsReduction, LayerNormConfig, MlpLayerConfig, MsaLayerConfig, TransformerLayerConfig, VisionTransformerModelConfig};
     use hs_core::transformers::config::Activation::QuickGelu;
 
     use super::*;
@@ -95,8 +95,16 @@ mod tests {
                     out_proj_label: String::from("out_proj"),
                 },
             },
-            ln_pre_config: Some((String::from("ln_pre"), hidden_size, hidden_size)),
-            ln_post_config: Some((String::from("ln_post"), hidden_size, hidden_size)),
+            ln_pre_config: Some(LayerNormConfig {
+                label: String::from("ln_pre"),
+                in_dim: hidden_size,
+                out_dim: hidden_size
+            }),
+            ln_post_config: Some(LayerNormConfig {
+                label: String::from("ln_post"),
+                in_dim: hidden_size,
+                out_dim: hidden_size
+            })
         };
 
         let vision_transformer = VisionTransformer::new(vb, &config).unwrap();

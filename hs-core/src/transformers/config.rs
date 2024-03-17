@@ -51,8 +51,8 @@ pub trait TransformerModelConfig {
     fn get_num_layers(&self) -> usize;
     fn get_layers_label(&self) -> &str;
     fn get_transformer_layer_config(&self) -> &TransformerLayerConfig;
-    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)>;
-    fn get_ln_post_config(&self) -> Option<(String, usize, usize)>;
+    fn get_ln_pre_config(&self) -> Option<(&str, usize, usize)>;
+    fn get_ln_post_config(&self) -> Option<(&str, usize, usize)>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -83,8 +83,8 @@ pub struct VisionTransformerModelConfig {
     pub permutation: Option<Vec<usize>>,
     pub reduction: Option<EmbeddsReduction>,
     pub transformer_layer: TransformerLayerConfig,
-    pub ln_pre_config: Option<(String, usize, usize)>,
-    pub ln_post_config: Option<(String, usize, usize)>
+    pub ln_pre_config: Option<LayerNormConfig>,
+    pub ln_post_config: Option<LayerNormConfig>
 }
 
 impl TransformerModelConfig for VisionTransformerModelConfig {
@@ -132,15 +132,27 @@ impl TransformerModelConfig for VisionTransformerModelConfig {
         &self.transformer_layer
     }
 
-    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)> {
-        self.ln_pre_config.clone()
+    fn get_ln_pre_config(&self) -> Option<(&str, usize, usize)> {
+        match &self.ln_pre_config {
+            Some(ln_pre_config) => Some((ln_pre_config.label.as_str(), ln_pre_config.in_dim, ln_pre_config.out_dim)),
+            _ => None
+        }
     }
 
-    fn get_ln_post_config(&self) -> Option<(String, usize, usize)> {
-        self.ln_post_config.clone()
+    fn get_ln_post_config(&self) -> Option<(&str, usize, usize)> {
+        match &self.ln_post_config {
+            Some(ln_post_config) => Some((ln_post_config.label.as_str(), ln_post_config.in_dim, ln_post_config.out_dim)),
+            _ => None
+        }
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LayerNormConfig {
+    pub in_dim: usize,
+    pub out_dim: usize,
+    pub label: String
+}
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -152,8 +164,8 @@ pub struct TextTransformerModelConfig {
     pub projection_label: String,
     pub permutation: Option<Vec<usize>>,
     pub transformer_layer: TransformerLayerConfig,
-    pub ln_pre_config: Option<(String, usize, usize)>,
-    pub ln_post_config: Option<(String, usize, usize)>
+    pub ln_pre_config: Option<LayerNormConfig>,
+    pub ln_post_config: Option<LayerNormConfig>
 }
 
 impl TransformerModelConfig for TextTransformerModelConfig {
@@ -201,12 +213,18 @@ impl TransformerModelConfig for TextTransformerModelConfig {
         &self.transformer_layer
     }
 
-    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)> {
-        self.ln_pre_config.clone()
+    fn get_ln_pre_config(&self) -> Option<(&str, usize, usize)> {
+        match &self.ln_pre_config {
+            Some(ln_pre_config) => Some((ln_pre_config.label.as_str(), ln_pre_config.in_dim, ln_pre_config.out_dim)),
+            _ => None
+        }
     }
 
-    fn get_ln_post_config(&self) -> Option<(String, usize, usize)> {
-        self.ln_post_config.clone()
+    fn get_ln_post_config(&self) -> Option<(&str, usize, usize)> {
+        match &self.ln_post_config {
+            Some(ln_post_config) => Some((ln_post_config.label.as_str(), ln_post_config.in_dim, ln_post_config.out_dim)),
+            _ => None
+        }
     }
 }
 
@@ -261,11 +279,11 @@ impl TransformerModelConfig for AudioTransformerModelConfig {
         unimplemented!()
     }
 
-    fn get_ln_pre_config(&self) -> Option<(String, usize, usize)> {
+    fn get_ln_pre_config(&self) -> Option<(&str, usize, usize)> {
         unimplemented!()
     }
 
-    fn get_ln_post_config(&self) -> Option<(String, usize, usize)> {
+    fn get_ln_post_config(&self) -> Option<(&str, usize, usize)> {
         unimplemented!()
     }
 }

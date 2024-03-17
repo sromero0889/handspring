@@ -15,11 +15,6 @@ use crate::transformers::layers::{GenEmbeddLayer, TransformerEncoderLayer};
 /// [`B: TransformerEncoderLayer + Module`]: Transformer encoder block to implement layer
 /// EX: TransformerResBlock
 ///
-/// # Examples
-///
-/// ```
-/// todo!()
-/// ```
 #[derive(Debug)]
 pub struct TransformerModelGen<A: GenEmbeddLayer + Module, B: TransformerEncoderLayer + Module> {
     embeddings: A,
