@@ -243,13 +243,11 @@ mod tests {
             },
             ln_pre_config: Some(LayerNormConfig {
                 label: String::from("ln_pre"),
-                in_dim: hidden_size,
-                out_dim: hidden_size
+                dim: hidden_size,
             }),
             ln_post_config: Some(LayerNormConfig {
                 label: String::from("ln_post"),
-                in_dim: hidden_size,
-                out_dim: hidden_size
+                dim: hidden_size,
             })
         };
 

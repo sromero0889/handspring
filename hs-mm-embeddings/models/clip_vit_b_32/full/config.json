@@ -45,13 +45,11 @@
       },
       "ln_pre_config": {
         "label": "ln_pre",
-        "in_dim": 768,
-        "out_dim": 768
+        "dim": 768
       },
       "ln_post_config": {
         "label": "ln_pre",
-        "in_dim": 768,
-        "out_dim": 768
+        "dim": 768
       }
     }
 

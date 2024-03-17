@@ -1,5 +1,5 @@
 use candle_core::{IndexOp, Module, Tensor};
-use candle_nn::{Linear, linear, VarBuilder};
+use candle_nn::{layer_norm, LayerNorm, LayerNormConfig, VarBuilder};
 use crate::errors::HsError;
 use crate::errors::HsError::InitModelError;
 use crate::transformers::config::{EmbeddsReduction, TransformerModelConfig};
@@ -22,8 +22,8 @@ pub struct TransformerModelGen<A: GenEmbeddLayer + Module, B: TransformerEncoder
     encoder: Vec<B>,
     reduction: Option<EmbeddsReduction>,
     projection: Tensor,
-    ln_pre: Option<Linear>,
-    ln_post: Option<Linear>
+    ln_pre: Option<LayerNorm>,
+    ln_post: Option<LayerNorm>
 
 }
 
@@ -37,12 +37,12 @@ impl <A: GenEmbeddLayer + Module, B: TransformerEncoderLayer + Module> Transform
             encoder.push(B::new(vb_layers.pp(num_layer.to_string()), &config.get_transformer_layer_config())?);
         }
         let reduction = config.get_reduction();
-        let ln_pre = if let Some((label, in_dim, out_dim)) = config.get_ln_pre_config() {
-            Some(linear(in_dim, out_dim, vb.pp(label)).map_err(InitModelError)?)
+        let ln_pre = if let Some((label, dim)) = config.get_ln_pre_config() {
+            Some(layer_norm(dim, LayerNormConfig::default(), vb.pp(label)).map_err(InitModelError)?)
         } else { None };
 
-        let ln_post = if let Some((label, in_dim, out_dim)) = config.get_ln_post_config() {
-            Some(linear(in_dim, out_dim, vb.pp(label)).map_err(InitModelError)?)
+        let ln_post = if let Some((label, dim)) = config.get_ln_post_config() {
+            Some(layer_norm(dim, LayerNormConfig::default(), vb.pp(label)).map_err(InitModelError)?)
         } else { None };
 
         let embeddings = A::new(vb, config)?; // borrows vb, has to be the last one
