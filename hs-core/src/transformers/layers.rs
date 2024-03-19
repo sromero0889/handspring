@@ -1,7 +1,4 @@
 
-// todo!
-// Pending following blocks inside TransformerResBlock:
-
 // MultiHeadSelfAttentionLayer (MSP)
 // This layer concatenates all the attention outputs linearly to the right dimensions.
 // The many attention heads help train local and global dependencies in an image.
@@ -15,10 +12,11 @@
 
 
 
-use candle_core::{Module, Tensor};
+use std::collections::HashMap;
+use candle_core::{D, Device, DType, Error, IndexOp, Module, Tensor};
 use candle_nn::{layer_norm, LayerNorm, LayerNormConfig, Linear, linear, VarBuilder};
 use crate::errors::HsError;
-use crate::errors::HsError::{InitModelError, Other};
+use crate::errors::HsError::InitModelError;
 use crate::transformers::config::{Activation, MlpLayerConfig, MsaLayerConfig, TransformerLayerConfig, TransformerModelConfig};
 use crate::transformers::tensor_ops::TensorOpsExtras;
 
@@ -65,105 +63,109 @@ pub struct MsaLayer {
     embedd_dim: usize,
     // num_patches: usize,
     num_heads: usize,
-    in_proj: Option<Linear>,
-    q_k_v_proj: Option<(Linear, Linear, Linear)>,
+    q_proj: Linear,
+    k_proj: Linear,
+    v_proj: Linear,
+    in_proj: Linear,
     out_proj: Linear
 }
 
 impl MsaLayer {
 
-    fn apply_in_proj(&self, xs: &Tensor) -> candle_core::Result<(Tensor, Tensor, Tensor)> {
-        // xs: [sequence_length, b_size, embedd_dim]
-        if let Some(in_proj) = &self.in_proj {
-            // in_proj.w: [3 * embedd_dim, embedd_dim]
-            // in_proj.b: [3 * embedd_dim]
-            let xs = xs.apply(in_proj)?;
-            // xs: [sequence_length, b_size, 3 * embedd_dim]
-            let (seq_len,batch_size,embedd_dim_3x)= xs.dims3()?;
-            let embedd_dim = embedd_dim_3x/3;
+    fn apply_in_proj(&self, q: &Tensor, k: &Tensor, v: &Tensor) -> candle_core::Result<(Tensor, Tensor, Tensor)> {
+        // Todo!!
+        // q, l, v: [sequence_length, b_size, embedd_dim]
+        // let (seq_len,batch_size, _)= xs.dims3()?;
+        // let q = q.apply(&self.q_proj)?;
+        // let k = k.apply(&self.k_proj)?;
+        // let v = v.apply(&self.v_proj)?;
 
-            let q_k_v = xs.reshape((seq_len, batch_size, 3, embedd_dim))?
-                // [seq_len, batch_size, 3, embedd_dim] same as unflatten last dim
-                .unsqueeze(0)?
-                // [1, seq_len, batch_size, 3, embedd_dim]
-                .transpose(0, 3)?
-                // [3, seq_len, batch_size, 1, embedd_dim]
-                .squeeze(3)?
-                // [3, seq_len, batch_size, embedd_dim]
-                .contiguous()? // ??
-                .chunk(3, 0)?;
-                // Vector of 3 tensors of [1, seq_len, batch_size, embedd_dim]
-
-
-
-            match q_k_v.as_slice() {
-                [q, k, v] => {
-                    // reshape q, k, v for multihead attention and make them batch first
-                    // num_heads * head_dim = embedd_dim -> unflatten last dim
-                    let q = q.reshape((seq_len, batch_size, self.num_heads, self.head_dim))?
-                        // [seq_len, batch_size, num_heads, head_dim]
-                        .permute((1,2,0,3))?;
-                        // [batch_size, num_heads, seq_len, head_dim]
-                    let k = k.reshape((seq_len, batch_size, self.num_heads, self.head_dim))?
-                        // [seq_len, batch_size, num_heads, head_dim]
-                        .permute((1,2,0,3))?;
-                        // [batch_size, num_heads, seq_len, head_dim]
-                    let v = v.reshape((seq_len, batch_size, self.num_heads, self.head_dim))?
-                        // [seq_len, batch_size, num_heads, head_dim]
-                        .permute((1,2,0,3))?;
-                        // [batch_size, num_heads, seq_len, head_dim]
-
-                    Ok((q, k, v))
-                },
-                _ => {
-                    Err(candle_core::error::Error::Msg(String::from("Error MsaLayer: q_k_v projections vector incorrect")))
-                }
-            }
-        } else if let Some((q_proj, k_proj, v_proj)) = &self.q_k_v_proj {
-            let q = xs.apply(q_proj)?;
-            let k = xs.apply(k_proj)?;
-            let v = xs.apply(v_proj)?;
-            // todo!()
-            Ok((q, k, v))
-        } else {
-
-            Err(candle_core::error::Error::Msg(String::from("Error MsaLayer: neither in_proj or q_k_v_proj has value")))
-        }
+        todo!()
     }
+
+    fn apply_in_proj_packed(&self, xs: &Tensor) -> candle_core::Result<(Tensor, Tensor, Tensor)> {
+        // xs: [sequence_length, b_size, embedd_dim]
+        let (seq_len,batch_size, embedd_dim)= xs.dims3()?;
+        let proj = xs.apply(&self.in_proj)?
+            .reshape((seq_len, batch_size, 3, embedd_dim))?
+            .unsqueeze(0)?
+            .transpose(0, D::Minus2)?
+            .squeeze(D::Minus2)?.
+            contiguous()?;
+
+        let q = proj.i(0)?;
+        let k = proj.i(1)?;
+        let v = proj.i(2)?;
+        // q = k = v: [sequence_length, b_size, embedd_dim]
+        Ok((q, k, v))
+    }
+    fn reshape_before_mask(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        // q = k = v: [sequence_length, b_size, embedd_dim]
+        let (seq_len, b_size, _) = xs.dims3()?;
+        xs.reshape((seq_len, b_size * self.num_heads, self.head_dim))?.transpose(0,1)
+        // [b_size * num_heads, sequence_length, head_dim]
+    }
+
+    fn reshape_after_mask(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        // [b_size * num_heads, sequence_length, head_dim]
+        let (dim0, seq_len, _) = xs.dims3()?;
+        let b_size = dim0 / self.num_heads;
+        xs.reshape((b_size, self.num_heads, seq_len, self.head_dim))
+        // [b_size, num_heads, sequence_length, head_dim]
+    }
+
+
+
     fn new(vb: VarBuilder, config: &MsaLayerConfig) -> Result<Self, HsError> {
 
-        let (in_proj, q_k_v_proj) = if let Some(in_proj_key) = &config.in_proj_label {
-            let in_proj = linear(
-                config.embed_dim,
-                config.interm_size,
-                vb.pp(in_proj_key)
-            ).map_err(InitModelError)?;
+        let (vb_in_proj, vb_q_proj, vb_k_proj, vb_v_proj) = if let Some(in_proj_key) = &config.in_proj_label {
 
-            (Some(in_proj), None)
+
+            // In this case interm_size = 3 * embedd_dim
+            let w = vb.get((config.interm_size,config.embed_dim), format!("{}.weight", in_proj_key).as_str()).unwrap();
+            let b = vb.get(config.interm_size, format!("{}.bias", in_proj_key).as_str()).map_err(InitModelError)?;
+
+            let mut vb_proj_layers: Vec<VarBuilder> = Vec::new();
+
+            for offset in 0..3 {
+                let w_proj = w.i(offset*config.embed_dim..(offset + 1)*config.embed_dim).map_err(InitModelError)?;
+                let b_proj = b.i(offset*config.embed_dim..(offset + 1)*config.embed_dim).map_err(InitModelError)?;
+                let mut proj_ts: HashMap<String, Tensor> = HashMap::new();
+                proj_ts.insert(String::from("weight"), w_proj);
+                proj_ts.insert(String::from("bias"), b_proj);
+                vb_proj_layers.push(VarBuilder::from_tensors(proj_ts, DType::F32, &Device::Cpu));
+
+            };
+
+            match &vb_proj_layers[..] {
+                [q_proj, k_proj, v_proj] => Ok((vb.pp(in_proj_key), q_proj.to_owned(), k_proj.to_owned(), v_proj.to_owned())),
+                _ => Err(Error::Msg(String::from("Problem building projection layers in MSA block")))
+            }
+
 
         } else if let (Some(q_label) , Some (k_label), Some(v_label)) = (&config.q_label, &config.k_label, &config.v_label) {
-            let embed_dim = config.embed_dim / 3;
-            let interm_size = config.interm_size / 3; // Todo check
-            (None, Some((
-                linear(
-                    embed_dim,
-                    interm_size,
-                    vb.pp(q_label)
-                ).map_err(InitModelError)?,
-                linear(
-                    embed_dim,
-                    interm_size,
-                    vb.pp(k_label)
-                ).map_err(InitModelError)?,
-                linear(
-                    embed_dim,
-                    interm_size,
-                    vb.pp(v_label)
-                ).map_err(InitModelError)?
-            )))
+            let wq_proj = vb.get((config.embed_dim, config.embed_dim), format!("{}.weight", q_label).as_str()).map_err(InitModelError)?;
+            let bq_proj = vb.get(config.embed_dim, format!("{}.weight", q_label).as_str()).map_err(InitModelError)?;
+            let wk_proj = vb.get((config.embed_dim, config.embed_dim), format!("{}.weight", k_label).as_str()).map_err(InitModelError)?;
+            let bk_proj = vb.get(config.embed_dim, format!("{}.weight", k_label).as_str()).map_err(InitModelError)?;
+            let wv_proj = vb.get((config.embed_dim, config.embed_dim), format!("{}.weight", v_label).as_str()).map_err(InitModelError)?;
+            let bv_proj = vb.get(config.embed_dim, format!("{}.weight", v_label).as_str()).map_err(InitModelError)?;
+
+            let w_in_proj = Tensor::cat(&[wq_proj, wk_proj, wv_proj], 0).map_err(InitModelError)?;
+            let v_in_proj = Tensor::cat(&[bq_proj, bk_proj, bv_proj], 0).map_err(InitModelError)?;
+            let mut in_proj_ts: HashMap<String, Tensor> = HashMap::new();
+            in_proj_ts.insert(String::from("weight"), w_in_proj);
+            in_proj_ts.insert(String::from("bias"), v_in_proj);
+            let vb_in_proj = VarBuilder::from_tensors(in_proj_ts, DType::F32, &Device::Cpu);
+            Ok(
+                (vb_in_proj,
+                 vb.pp(q_label),
+                 vb.pp(k_label),
+                 vb.pp(v_label)
+                ))
         } else {
-            (None, None)
-        };
+            Err(Error::Msg(String::from("Problem building projection layers in MSA block, check config.json & model.safetensors")))
+        }.map_err(InitModelError)?;
 
 
         let out_proj= linear(
@@ -172,40 +174,66 @@ impl MsaLayer {
             vb.pp(config.out_proj_label.as_str())
         ).map_err(InitModelError)?;
 
-        if in_proj.is_none() && q_k_v_proj.is_none() {
-            Err(Other("MsaLayer Error: Could not initialize model, wrong q,k,v proj parameters"))
-        } else{
-            Ok(Self {
-                // Todo
-                head_dim: config.head_dim,
-                embedd_dim: config.embed_dim,
-                // num_patches: config.num_patches,
-                num_heads: config.num_heads,
-                in_proj,
-                q_k_v_proj,
-                out_proj
-            })
-        }
+        Ok(Self {
+            // Todo
+            head_dim: config.head_dim,
+            embedd_dim: config.embed_dim,
+            // num_patches: config.num_patches,
+            num_heads: config.num_heads,
+            q_proj: linear(
+                config.embed_dim,
+                config.embed_dim,
+                vb_q_proj
+            ).map_err(InitModelError)?,
+            k_proj: linear(
+                config.embed_dim,
+                config.embed_dim,
+                vb_k_proj
+            ).map_err(InitModelError)?,
+            out_proj,
+            v_proj: linear(
+                config.embed_dim,
+                config.embed_dim,
+                vb_v_proj
+            ).map_err(InitModelError)?,
+            in_proj: linear(
+                config.embed_dim,
+                3 * config.embed_dim,
+                vb_in_proj
+            ).map_err(InitModelError)?,
+        })
     }
 }
 
 impl Module for MsaLayer {
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
-        let (q, k, v) = self.apply_in_proj(xs)?;
-        let head_dim = self.head_dim as f64; // num_heads = vision_width // 64 -> head_dim = embed_dim // num_heads
-        // q,k,v: [batch_size, num_heads, seq_len, head_dim]
-        let (batch_size, _, seq_len, _) = q.dims4()?;
+        // todo conditional
+        let (q, k, v) = self.apply_in_proj_packed(xs)?;
+        let q = self.reshape_before_mask(&q)?;
+        let k = self.reshape_before_mask(&k)?;
+        let v = self.reshape_before_mask(&v)?;
+        // [b_size * num_heads, sequence_length, head_dim]
         // Todo add attention_mask for text
+
+        let q = self.reshape_after_mask(&q)?;
+        let k = self.reshape_after_mask(&k)?;
+        let v = self.reshape_after_mask(&v)?;
+        // [b_size, num_heads, sequence_length, head_dim]
+
+        let head_dim = self.head_dim as f64; // num_heads = vision_width // 64 -> head_dim = embed_dim // num_heads
+
         let xs = Tensor::scaled_dot_product_attn(&q, &k, &v, head_dim)?;
-        // xs: [batch_size, num_heads, seq_len, head_dim]
+        // xs: [batch_size, num_heads, sequence_length, head_dim]
+
+        let (b_size, _, seq_len, _) = xs.dims4()?;
         let xs = xs.permute((2,0,1,3))?
             // [seq_len, batch_size, num_heads, head_dim]
-            .reshape((seq_len * batch_size, self.embedd_dim))?;
+            .reshape((b_size * seq_len, self.embedd_dim))?;
             // [seq_len * batch_size, num_heads * head_dim = embedd_dim]
 
         xs.apply(&self.out_proj)?
-            // [seq_len,  batch_size, embedd_dim]
-            .reshape((seq_len, batch_size, self.embedd_dim))
+            // [seq_len,  batch_size, embedd_dim] // Why this reshape?
+            .reshape((seq_len, b_size, self.embedd_dim))
     }
 }
 

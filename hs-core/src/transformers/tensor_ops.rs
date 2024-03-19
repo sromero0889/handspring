@@ -1,4 +1,4 @@
-use candle_core::Tensor;
+use candle_core::{D, Tensor};
 
 pub trait TensorOpsExtras {
     fn quick_gelu(&self) -> candle_core::Result<Tensor>;
@@ -16,7 +16,7 @@ impl TensorOpsExtras for Tensor {
 
         // matmul is an operation that requires tensors to be contiguous
         let q = q.contiguous()?;
-        let kt = k.t()?;
+        let kt = k.transpose(D::Minus2, D::Minus1)?;
         let kt= if kt.is_contiguous() { kt } else { kt.contiguous()? };
         let v = v.contiguous()?;
 
