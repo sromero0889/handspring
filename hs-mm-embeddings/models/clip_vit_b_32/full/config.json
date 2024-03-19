@@ -48,7 +48,7 @@
         "dim": 768
       },
       "ln_post_config": {
-        "label": "ln_pre",
+        "label": "ln_post",
         "dim": 768
       }
     }
