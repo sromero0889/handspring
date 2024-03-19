@@ -31,6 +31,63 @@ Open Source Multimodal Embeddings in Rust
   - Split safetensors files into modalities (todo! improve code to automate this)
 
 
+### Performance tests
+#### 19-Mar-2024
+Basic test to get an idea of the current performance
+CPU, same environment
+
+**Clip python, JIT**
+
+```
+device="cpu"
+model_name="ViT-B/32"
+model, transform = clip.load(model_name, device=device, jit=True)
+
+input_data_b = torch.ones((5, 3, 224, 224), dtype=torch.float32, device=device)
+out = model.encode_image(input_data_b)
+```
+
+Results
+```
+Time elapsed in build_model() is: 1.6573503890000003
+Time elapsed in forward() is: 1.101630814
+```
+
+**Rust, Clip_vit_b_32_image**
+```
+use hs_mm_embeddings::clip_vit_b_32_image;
+fn main() {
+    let start = Instant::now();
+    let image_model = clip_vit_b_32_image::model::build_model().unwrap();
+
+    let duration = start.elapsed();
+    println!("Time elapsed in build_model() is: {:?}", duration);
+    
+    let input_img_batch = Tensor::ones((5, 3, 224, 224), DType::F32, &Device::Cpu).unwrap();
+
+    let start = Instant::now();
+
+    let output = image_model.forward(&input_img_batch).unwrap();
+    
+    et duration = start.elapsed();
+    println!("Time elapsed in forward() is: {:?}", duration);
+```
+
+Results
+
+```
+Time elapsed in build_model() is: 483.20213ms
+Time elapsed in forward() is: 1.495299234s
+
+```
+
+**Observations**
+- Time generating embeddings still too high
+- Max difference between output tensors: [8.5831e-6]
+- Rust executable size (release): 183.7 MB
+
+todo!: check unnecessary copies or redundant ops
+
 ### Docs & Examples
 todo!
 
