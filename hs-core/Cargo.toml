@@ -11,3 +11,5 @@ candle-core = { workspace = true }
 candle-nn = { workspace = true }
 thiserror = "1.0.57"
 anyhow = "1.0.79"
+rayon = "1.9.0"
+rayon-join-macro = "0.1.1"

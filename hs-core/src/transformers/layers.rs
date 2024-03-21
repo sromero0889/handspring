@@ -61,7 +61,6 @@ impl Module for MlpLayer {
 pub struct MsaLayer {
     head_dim: usize,
     embedd_dim: usize,
-    // num_patches: usize,
     num_heads: usize,
     q_proj: Linear,
     k_proj: Linear,
@@ -72,16 +71,16 @@ pub struct MsaLayer {
 
 impl MsaLayer {
 
-    fn apply_in_proj(&self, q: &Tensor, k: &Tensor, v: &Tensor) -> candle_core::Result<(Tensor, Tensor, Tensor)> {
-        // Todo!!
-        // q, l, v: [sequence_length, b_size, embedd_dim]
-        // let (seq_len,batch_size, _)= xs.dims3()?;
-        // let q = q.apply(&self.q_proj)?;
-        // let k = k.apply(&self.k_proj)?;
-        // let v = v.apply(&self.v_proj)?;
-
-        todo!()
-    }
+    // fn apply_in_proj(&self, q: &Tensor, k: &Tensor, v: &Tensor) -> candle_core::Result<(Tensor, Tensor, Tensor)> {
+    //     // Todo!!
+    //     // q, l, v: [sequence_length, b_size, embedd_dim]
+    //     // let (seq_len,batch_size, _)= xs.dims3()?;
+    //     // let q = q.apply(&self.q_proj)?;
+    //     // let k = k.apply(&self.k_proj)?;
+    //     // let v = v.apply(&self.v_proj)?;
+    //
+    //     unimplemented!()
+    // }
 
     fn apply_in_proj_packed(&self, xs: &Tensor) -> candle_core::Result<(Tensor, Tensor, Tensor)> {
         // xs: [sequence_length, b_size, embedd_dim]
@@ -112,6 +111,11 @@ impl MsaLayer {
         let b_size = dim0 / self.num_heads;
         xs.reshape((b_size, self.num_heads, seq_len, self.head_dim))
         // [b_size, num_heads, sequence_length, head_dim]
+    }
+
+    fn process_qkv(&self, t: & Tensor) -> candle_core::Result<Tensor> {
+        let t = self.reshape_before_mask(&t)?;
+        self.reshape_after_mask(&t)
     }
 
 
@@ -204,25 +208,35 @@ impl MsaLayer {
         })
     }
 }
-
+use rayon_join_macro::join;
 impl Module for MsaLayer {
+
+
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         // todo conditional
         let (q, k, v) = self.apply_in_proj_packed(xs)?;
-        let q = self.reshape_before_mask(&q)?;
-        let k = self.reshape_before_mask(&k)?;
-        let v = self.reshape_before_mask(&v)?;
+        // let q = self.reshape_before_mask(&q)?;
+        // let k = self.reshape_before_mask(&k)?;
+        // let v = self.reshape_before_mask(&v)?;
         // [b_size * num_heads, sequence_length, head_dim]
         // Todo add attention_mask for text
 
-        let q = self.reshape_after_mask(&q)?;
-        let k = self.reshape_after_mask(&k)?;
-        let v = self.reshape_after_mask(&v)?;
+        // let q = self.reshape_after_mask(&q?)?;
+        // let k = self.reshape_after_mask(&k?)?;
+        // let v = self.reshape_after_mask(&v?)?;
         // [b_size, num_heads, sequence_length, head_dim]
+
+
+
+        let (q, k, v) = join!(
+            || self.process_qkv(&q),
+            || self.process_qkv(&k),
+            || self.process_qkv(&v)
+        );
 
         let head_dim = self.head_dim as f64; // num_heads = vision_width // 64 -> head_dim = embed_dim // num_heads
 
-        let xs = Tensor::scaled_dot_product_attn(&q, &k, &v, head_dim)?;
+        let xs = Tensor::scaled_dot_product_attn(&q?, &k?, &v?, head_dim)?;
         // xs: [batch_size, num_heads, sequence_length, head_dim]
 
         let (b_size, _, seq_len, _) = xs.dims4()?;
@@ -232,7 +246,7 @@ impl Module for MsaLayer {
             // [seq_len * batch_size, num_heads * head_dim = embedd_dim]
 
         xs.apply(&self.out_proj)?
-            // [seq_len,  batch_size, embedd_dim] // Why this reshape?
+            // [seq_len,  batch_size, embedd_dim]
             .reshape((seq_len, b_size, self.embedd_dim))
     }
 }

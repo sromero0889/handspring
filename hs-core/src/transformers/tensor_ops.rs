@@ -15,13 +15,13 @@ impl TensorOpsExtras for Tensor {
     fn scaled_dot_product_attn(q: &Tensor, k: &Tensor, v: &Tensor, dk: f64) -> candle_core::Result<Tensor> {
 
         // matmul is an operation that requires tensors to be contiguous
-        let q = q.contiguous()?;
+        // let q = q.contiguous()?;
         let kt = k.transpose(D::Minus2, D::Minus1)?;
-        let kt= if kt.is_contiguous() { kt } else { kt.contiguous()? };
-        let v = v.contiguous()?;
+        // let kt= if kt.is_contiguous() { kt } else { kt.contiguous()? };
+        // let v = v.contiguous()?;
+        let scale_factor = 1. / f64::sqrt(dk);
 
-        candle_nn::ops::softmax_last_dim(&(q.matmul(&kt)? / f64::sqrt(dk))?)?
+        candle_nn::ops::softmax_last_dim(&(q.matmul(&kt)? * scale_factor)?)?
             .matmul(&v)
-
     }
 }
