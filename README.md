@@ -69,7 +69,7 @@ fn main() {
 
     let output = image_model.forward(&input_img_batch).unwrap();
     
-    et duration = start.elapsed();
+    let duration = start.elapsed();
     println!("Time elapsed in forward() is: {:?}", duration);
 ```
 
@@ -81,9 +81,20 @@ Time elapsed in forward() is: 1.495299234s
 
 ```
 
+**Testing different batch size**
+- size 1:
+  - Python: 0.5376610519999998
+  - Rust: 282.812172ms
+- size 2:
+  - Python: 0.6142103929999996
+  - Rust: 941.727512ms
+- 
+
+
 **Observations**
-- Time generating embeddings still too high
-- Max difference between output tensors: [8.5831e-6]
+- Time generating embeddings still too high when batch_size > 1
+- With batch_size = 1 is faster
+- Max difference between output tensors: [8.5831e-6] JIT=False & [7.6294e-6] JIT=True
 - Rust executable size (release): 183.7 MB
 
 todo!: check unnecessary copies or redundant ops
