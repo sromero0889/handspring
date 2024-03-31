@@ -4,7 +4,7 @@ use log::error;
 use rust_embed::RustEmbed;
 use hs_core::errors::HsError;
 use hs_core::errors::HsError::{JsonMapError, InitModelError, ModelAssetsNotFound, SafetensorsMapError, Other};
-use hs_image_core::embeddings::model::VisionTransformer;
+// use hs_image_core::embeddings::model::VisionTransformer;
 use crate::config::ModelDescriptor;
 
 

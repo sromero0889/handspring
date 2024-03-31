@@ -8,13 +8,13 @@ pub struct TextEmbedLayer {}
 impl GenEmbeddLayer for TextEmbedLayer {
 
     fn new<C: TransformerModelConfig>(vb: VarBuilder, config: &C) -> Result<Self, HsError>  where Self: Sized {
-        todo!()
+        unimplemented!()
     }
 }
 
 impl Module for TextEmbedLayer {
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
-        todo!()
+        unimplemented!()
     }
 }
 

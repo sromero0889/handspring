@@ -4,8 +4,12 @@ use log::{debug, error};
 use rust_embed::RustEmbed;
 use hs_core::errors::HsError;
 use hs_core::errors::HsError::{JsonMapError, ModelAssetsNotFound, SafetensorsMapError, Other};
-use hs_image_core::embeddings::model::VisionTransformer;
+use hs_core::transformers::layers::TransformerResBlock;
+use hs_core::transformers::model::TransformerModelGen;
+use hs_image_core::embeddings::layers::VisionEmbedLayer;
+// use hs_image_core::embeddings::model::VisionTransformer;
 use crate::config::ModelDescriptor;
+pub type VisionTransformer = TransformerModelGen<VisionEmbedLayer, TransformerResBlock>;
 
 
 /// Returns a model that generates embeddings from images
